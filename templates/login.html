@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Entrar · Disparos Telegram{% endblock %}
+
+{# Login nao mostra a barra superior padrao #}
+{% block topbar %}{% endblock %}
+
+{% block body %}
+<div class="login-shell">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24"><path d="M21.9 3.2 2.6 10.9c-1 .4-1 1.8.1 2.1l4.9 1.6 1.9 5.8c.3.9 1.4 1 2 .3l2.7-2.9 4.9 3.6c.7.5 1.7.1 1.9-.7L23.9 4.4c.2-.9-.7-1.6-2-1.2z"/></svg>
+    </div>
+    <h1>Disparos Telegram</h1>
+    <div class="sub">Entre com sua conta para continuar</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for cat, msg in messages %}
+        <div class="flash {{ cat }}">{{ '✓' if cat == 'ok' else '⚠' }} {{ msg }}</div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('login') }}">
+      <div class="field">
+        <label>Usuário</label>
+        <input name="username" autofocus required placeholder="seu usuário">
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input name="password" type="password" required placeholder="sua senha">
+      </div>
+      <button type="submit" class="btn full" style="margin-top:6px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        Entrar
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

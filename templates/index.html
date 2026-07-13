@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Disparos · Telegram{% endblock %}
+
+{% block content %}
+  {% set n_pend = (dispatches|selectattr('status','equalto','pending')|list|length)
+                + (dispatches|selectattr('status','equalto','active')|list|length) %}
+  {% set n_sent = dispatches|selectattr('status','equalto','sent')|list|length %}
+  {% set n_err  = dispatches|selectattr('status','equalto','error')|list|length %}
+  <div class="stats">
+    <div class="stat n0"><div class="n">{{ dispatches|length }}</div><div class="l">Total</div></div>
+    <div class="stat b"><div class="n">{{ n_pend }}</div><div class="l">Agendados</div></div>
+    <div class="stat g"><div class="n">{{ n_sent }}</div><div class="l">Enviados</div></div>
+    <div class="stat r"><div class="n">{{ n_err }}</div><div class="l">Com erro</div></div>
+  </div>
+
+  <div class="card">
+    <div class="head">
+      <div class="ic">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </div>
+      <h2>Novo disparo programado</h2>
+    </div>
+    <div class="body">
+    <form method="post" action="{{ url_for('create') }}" enctype="multipart/form-data">
+      <div class="row">
+        <div class="field">
+          <label>Destino — ID numérico ou @usuário</label>
+          <input name="chat_id" id="chat_id" placeholder="-1001234567890 ou @meucanal" required>
+        </div>
+        <div class="field">
+          <label>Apelido (opcional)</label>
+          <input name="chat_label" placeholder="Ex.: Canal de Ofertas">
+        </div>
+      </div>
+
+      <button type="button" class="btn ghost sm" onclick="descobrir()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        Descobrir grupos/canais do bot
+      </button>
+      <div id="chats" class="chips"></div>
+
+      <div class="field" style="margin-top:14px">
+        <label>Tipo de mensagem</label>
+        <select name="msg_type" id="msg_type" onchange="toggleTipo()">
+          <option value="text">📝 Texto</option>
+          <option value="photo">🖼️ Foto (com legenda)</option>
+          <option value="video">🎬 Vídeo (com legenda)</option>
+        </select>
+      </div>
+
+      <div id="media-field" class="field hidden">
+        <label id="media-label">Arquivo</label>
+        <input type="file" name="media" id="media">
+      </div>
+
+      <div class="field">
+        <label id="text-label">Texto da mensagem</label>
+        <textarea name="text" id="text" placeholder="Escreva sua mensagem aqui..."></textarea>
+      </div>
+
+      <label class="check">
+        <input type="checkbox" name="formatar" id="formatar" value="1" onchange="toggleAjudaFmt()">
+        <span>Ativar formatação (negrito, itálico e links)</span>
+      </label>
+      <div id="ajuda-fmt" class="hint hidden">
+        Use <code>*negrito*</code> · <code>_itálico_</code> · <code>[clique aqui](https://site.com)</code>.
+        Sem marcar, a mensagem vai como texto puro (qualquer caractere é aceito).
+      </div>
+
+      <div class="row3" style="margin-top:16px">
+        <div class="field">
+          <label>Data</label>
+          <input type="date" name="date" id="date" value="{{ today }}" min="{{ today }}" required>
+        </div>
+        <div class="field">
+          <label>Hora</label>
+          <input type="time" name="time" id="time" value="{{ now_time }}" required>
+        </div>
+        <div class="field">
+          <label>Repetição</label>
+          <select name="repeat">
+            <option value="once">Uma vez</option>
+            <option value="daily">Todos os dias</option>
+            <option value="weekly">Toda semana</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          Agendar disparo
+        </button>
+      </div>
+    </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head">
+      <div class="ic">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      </div>
+      <h2>Disparos agendados</h2>
+      <span class="sub">{{ dispatches|length }} no total</span>
+    </div>
+    <div class="body" style="padding:0">
+    {% if dispatches %}
+    <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Quando</th><th>Destino</th><th>Tipo</th><th>Conteúdo</th>
+        <th>Repete</th><th>Agendado por</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for d in dispatches %}
+        <tr>
+          <td class="when">{{ d.scheduled_at.replace('T',' ')[11:16] }}<small>{{ d.scheduled_at[8:10] }}/{{ d.scheduled_at[5:7] }}/{{ d.scheduled_at[0:4] }}</small></td>
+          <td><div class="dest">{{ d.chat_label }}</div><div class="mono">{{ d.chat_id }}</div></td>
+          <td><span class="type-tag">{{ {'text':'texto','photo':'foto','video':'vídeo'}.get(d.msg_type, d.msg_type) }}</span></td>
+          <td>
+            {% if d.text %}{{ d.text[:60] }}{% if d.text|length > 60 %}…{% endif %}{% endif %}
+            {% if d.media_path %}<div class="hint" style="margin-top:4px">📎 {{ d.media_path.split('\\')[-1].split('/')[-1] }}</div>{% endif %}
+            {% if d.error %}<div class="hint" style="margin-top:4px; color:var(--err)">⚠ {{ d.error }}</div>{% endif %}
+          </td>
+          <td>{{ {'once':'uma vez','daily':'diário','weekly':'semanal'}.get(d.repeat, d.repeat) }}</td>
+          <td>
+            {% if d.created_by %}
+              <span class="who"><span class="av">{{ d.created_by[0]|upper }}</span>{{ d.created_by }}</span>
+            {% else %}
+              <span class="muted-note">—</span>
+            {% endif %}
+          </td>
+          <td><span class="badge s-{{ d.status }}">{{ {'pending':'Agendado','active':'Ativo','sent':'Enviado','error':'Erro','canceled':'Cancelado'}.get(d.status, d.status) }}</span></td>
+          <td style="white-space:nowrap">
+            {% if d.status in ('pending','active','error') %}
+              <form method="post" action="{{ url_for('cancel', dispatch_id=d.id) }}" style="display:inline">
+                <button class="btn warn sm">Cancelar</button>
+              </form>
+            {% endif %}
+            <form method="post" action="{{ url_for('delete', dispatch_id=d.id) }}" style="display:inline"
+                  onsubmit="return confirm('Remover este disparo?')">
+              <button class="btn danger sm">Excluir</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+      <div class="empty">
+        <div class="big">📭</div>
+        Nenhum disparo agendado ainda.<br>
+        <span class="muted-note">Crie o primeiro no formulário acima.</span>
+      </div>
+    {% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function toggleTipo() {
+    const t = document.getElementById('msg_type').value;
+    const mf = document.getElementById('media-field');
+    const ml = document.getElementById('media-label');
+    const tl = document.getElementById('text-label');
+    if (t === 'text') {
+      mf.classList.add('hidden');
+      tl.textContent = 'Texto da mensagem';
+    } else {
+      mf.classList.remove('hidden');
+      ml.textContent = t === 'photo' ? 'Arquivo de foto (jpg, png, webp, gif)'
+                                     : 'Arquivo de vídeo (mp4, mov, mkv, webm)';
+      tl.textContent = 'Legenda (opcional)';
+    }
+  }
+
+  async function descobrir() {
+    const box = document.getElementById('chats');
+    box.innerHTML = '<span class="muted-note">Buscando...</span>';
+    try {
+      const r = await fetch('{{ url_for("discover") }}');
+      const data = await r.json();
+      if (!data.ok) { box.innerHTML = '<span class="muted-note" style="color:var(--err)">Erro: ' + data.error + '</span>'; return; }
+      if (!data.chats.length) {
+        box.innerHTML = '<span class="muted-note">Nada encontrado. Mande uma mensagem no grupo, '
+          + 'ou adicione o bot como admin no canal e publique algo, depois tente de novo.</span>';
+        return;
+      }
+      box.innerHTML = '';
+      data.chats.forEach(c => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chip';
+        b.innerHTML = '<span>' + (c.title || c.id) + '</span><span class="t">' + c.type + '</span>';
+        b.onclick = () => {
+          document.getElementById('chat_id').value = c.username ? '@' + c.username : c.id;
+          if (!document.querySelector('[name=chat_label]').value) {
+            document.querySelector('[name=chat_label]').value = c.title || '';
+          }
+        };
+        box.appendChild(b);
+      });
+    } catch (e) { box.innerHTML = '<span class="muted-note" style="color:var(--err)">Falha na requisição</span>'; }
+  }
+
+  function toggleAjudaFmt() {
+    const on = document.getElementById('formatar').checked;
+    document.getElementById('ajuda-fmt').classList.toggle('hidden', !on);
+  }
+
+  toggleTipo();
+</script>
+{% endblock %}

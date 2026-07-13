@@ -1,0 +1,9 @@
+.env
+.secret
+uploads/
+data.db
+jobs.sqlite
+__pycache__/
+*.pyc
+venv/
+.venv/

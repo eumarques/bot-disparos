@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Usuários · Disparos Telegram{% endblock %}
+
+{% block content %}
+  <div style="margin-bottom:18px">
+    <a class="btn ghost sm" href="{{ url_for('index') }}">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Voltar aos disparos
+    </a>
+  </div>
+
+  <div class="card">
+    <div class="head">
+      <div class="ic">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h2>Novo usuário</h2>
+    </div>
+    <div class="body">
+      <form method="post" action="{{ url_for('users_add') }}">
+        <div class="row">
+          <div class="field">
+            <label>Usuário</label>
+            <input name="username" required placeholder="ex.: joao">
+          </div>
+          <div class="field">
+            <label>Senha</label>
+            <input name="password" type="password" required placeholder="senha inicial">
+          </div>
+        </div>
+        <label class="check">
+          <input type="checkbox" name="is_admin" value="1">
+          <span>Tornar administrador (pode gerenciar usuários)</span>
+        </label>
+        <div class="actions">
+          <button type="submit" class="btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Criar usuário
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head">
+      <div class="ic">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h2>Usuários</h2>
+      <span class="sub">{{ users|length }} no total</span>
+    </div>
+    <div class="body" style="padding:0">
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>Usuário</th><th>Perfil</th><th>Criado em</th><th></th></tr></thead>
+        <tbody>
+        {% for u in users %}
+          <tr>
+            <td>
+              <span class="who"><span class="av">{{ u.username[0]|upper }}</span>
+                <b>{{ u.username }}</b>
+                {% if u.username == current_user %}<span class="muted-note">(você)</span>{% endif %}
+              </span>
+            </td>
+            <td>{% if u.is_admin %}<span class="tag-admin">Administrador</span>{% else %}<span class="tag-user">Usuário</span>{% endif %}</td>
+            <td class="muted-note">{{ u.created_at.replace('T',' ')[:16] }}</td>
+            <td style="white-space:nowrap">
+              {% if u.username != current_user %}
+                <form method="post" action="{{ url_for('users_delete', user_id=u.id) }}" style="display:inline"
+                      onsubmit="return confirm('Remover o usuário {{ u.username }}?')">
+                  <button class="btn danger sm">Excluir</button>
+                </form>
+              {% else %}
+                <span class="muted-note">—</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}
