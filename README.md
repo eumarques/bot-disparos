@@ -11,6 +11,20 @@ Painel web para **programar o envio de mensagens** (texto, foto ou vídeo) em
 - Persistência: os agendamentos sobrevivem a reinícios do programa
 - Botão para **descobrir os IDs** dos grupos/canais onde o bot está
 
+## Jeito fácil de ligar (sem IDE)
+
+Depois de instalado, é só **dar dois cliques em `Iniciar-Bot.bat`**. Ele:
+
+1. Prepara tudo sozinho na primeira vez (cria o ambiente e baixa o necessário);
+2. Cria um atalho **"Bot de Disparos"** na sua **Área de Trabalho** — use ele nas próximas vezes;
+3. **Abre o painel no navegador** automaticamente.
+
+Para **desligar o bot**, basta **fechar a janela preta** que abriu.
+
+> Na primeiríssima vez pode demorar alguns minutos (só uma vez). É preciso ter o
+> **Python** instalado — se não tiver, baixe em https://www.python.org/downloads/
+> e marque **"Add Python to PATH"** na instalação.
+
 ## Como configurar (passo a passo)
 
 ### 1. Criar o bot no Telegram
