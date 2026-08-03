@@ -33,27 +33,84 @@ def get_me():
     return _post("getMe")
 
 
+# [rotulo](url) -- aceita espaco entre ] e (, e um nivel de parenteses dentro
+# da URL (ex.: .../Bot_(informatica)).
+LINK_RE = re.compile(
+    r"\[([^\[\]\n]+)\][ \t]*\([ \t]*([^()\s]*(?:\([^()\s]*\)[^()\s]*)*)[ \t]*\)"
+)
+
+# Esquemas que o Telegram aceita num href.
+SCHEME_RE = re.compile(r"^(?:https?://|tg://|mailto:|tel:)", re.I)
+
+# Marca temporaria que guarda o lugar de um link durante a conversao. Usa \x00
+# porque esse caractere nao aparece em texto digitado no painel.
+_SLOT_RE = re.compile(r"\x00(\d+)\x00")
+
+
+def _escape_attr(url):
+    """Escapa a URL para dentro do href usando so as entidades que o Telegram
+    entende (&amp; &lt; &gt; &quot;)."""
+    return (url.replace("&", "&amp;")
+               .replace("<", "&lt;")
+               .replace(">", "&gt;")
+               .replace('"', "&quot;"))
+
+
+def _normalize_url(url):
+    """Devolve a URL pronta para o href, ou None se nao parecer um link.
+
+    Aceita link escrito sem http:// (o mais comum de quem so cola o endereco):
+    'www.site.com' e 'site.com.br/promo' viram 'https://...'.
+    """
+    url = url.strip()
+    if not url:
+        return None
+    if SCHEME_RE.match(url):
+        return url
+    if "@" in url and "/" not in url:          # e-mail digitado solto
+        return "mailto:" + url
+    if "." in url.split("/", 1)[0]:            # tem cara de dominio
+        return "https://" + url
+    return None
+
+
+def _inline(text):
+    """Aplica *negrito* e _italico_ num trecho de texto JA escapado."""
+    text = re.sub(r"\*([^*\n]+)\*", r"<b>\1</b>", text)
+    text = re.sub(r"_([^_\n]+)_", r"<i>\1</i>", text)
+    return text
+
+
 def render_html(text):
     """Converte marcacoes simples em HTML do Telegram, de forma segura.
 
-    Primeiro escapa TUDO (& < >) para o texto do usuario nunca quebrar o
-    parse; depois transforma as marcacoes (que usam caracteres nao-HTML):
         *negrito*            -> <b>negrito</b>
         _italico_            -> <i>italico</i>
         [texto](https://...) -> <a href="...">texto</a>
+
+    Os links sao retirados do texto ANTES de escapar e de aplicar negrito/
+    italico, e so voltam no fim. Sem isso uma URL com '_' ou '*' (ex.:
+    site.com/promo_black_friday) era despedacada por essas marcacoes e o
+    Telegram recusava a mensagem inteira.
     """
     if not text:
         return text or ""
-    esc = html_lib.escape(text, quote=False)  # escapa & < >
+    text = text.replace("\x00", "")   # protege a marca temporaria
 
-    def _link(m):
-        label, url = m.group(1), m.group(2)
-        return f'<a href="{html_lib.escape(url, quote=True)}">{label}</a>'
+    links = []
 
-    esc = re.sub(r"\[([^\]]+)\]\((https?://[^\s)]+)\)", _link, esc)
-    esc = re.sub(r"\*([^*\n]+)\*", r"<b>\1</b>", esc)     # *negrito*
-    esc = re.sub(r"_([^_\n]+)_", r"<i>\1</i>", esc)       # _italico_
-    return esc
+    def _guardar(m):
+        url = _normalize_url(m.group(2))
+        if url is None:
+            return m.group(0)         # nao parece link: segue como texto comum
+        rotulo = _inline(html_lib.escape(m.group(1), quote=False))
+        links.append(f'<a href="{_escape_attr(url)}">{rotulo}</a>')
+        return f"\x00{len(links) - 1}\x00"
+
+    esc = LINK_RE.sub(_guardar, text)         # 1) tira os links do caminho
+    esc = html_lib.escape(esc, quote=False)   # 2) escapa & < > do resto
+    esc = _inline(esc)                        # 3) *negrito* e _italico_
+    return _SLOT_RE.sub(lambda m: links[int(m.group(1))], esc)  # 4) devolve os links
 
 
 def _text_payload(field, text, parse_html):
