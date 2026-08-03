@@ -55,7 +55,15 @@
 
       <div class="field">
         <label id="text-label">Texto da mensagem</label>
-        <textarea name="text" id="text" placeholder="Escreva sua mensagem aqui..."></textarea>
+        <textarea name="text" id="text" placeholder="Escreva sua mensagem aqui..." oninput="toggleAjudaFmt()"></textarea>
+      </div>
+
+      <div id="aviso-fmt" class="hint hidden" style="background:var(--errbg);
+           border:1px solid rgba(255,92,108,.3); border-radius:10px;
+           padding:9px 12px; color:#ffd0d5">
+        Você escreveu <code>[texto](link)</code> mas a formatação está desligada —
+        do jeito que está, a mensagem vai chegar com os colchetes e o endereço
+        aparecendo. Marque a caixa abaixo para o link virar clicável.
       </div>
 
       <label class="check">
@@ -209,8 +217,13 @@
   function toggleAjudaFmt() {
     const on = document.getElementById('formatar').checked;
     document.getElementById('ajuda-fmt').classList.toggle('hidden', !on);
+    // Sem a caixa marcada o [texto](link) viaja literal e o link nao fica
+    // clicavel -- avisa antes de agendar em vez de deixar o disparo sair errado.
+    const temLink = /\[[^\]\n]+\][ \t]*\([^)\n]+\)/.test(document.getElementById('text').value);
+    document.getElementById('aviso-fmt').classList.toggle('hidden', on || !temLink);
   }
 
   toggleTipo();
+  toggleAjudaFmt();
 </script>
 {% endblock %}
